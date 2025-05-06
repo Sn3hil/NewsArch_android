@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "616278470049",
+    "project_id": "newsapp-cc9d8",
+    "storage_bucket": "newsapp-cc9d8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:616278470049:android:c5a98c71034cc8bcdd2fe0",
+        "android_client_info": {
+          "package_name": "com.example.newsfetch"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAlnzhCTP6o9_NoU1ptDP7BDophL9rQawo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
