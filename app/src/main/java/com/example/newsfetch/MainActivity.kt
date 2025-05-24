@@ -10,6 +10,7 @@ import android.util.Log
 import android.view.View
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
+import android.widget.Button
 import android.widget.CalendarView
 import android.widget.ImageButton
 import android.widget.LinearLayout
@@ -19,6 +20,7 @@ import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.cardview.widget.CardView
+import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.view.isVisible
 import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
@@ -37,10 +39,14 @@ class MainActivity : AppCompatActivity() {
     private lateinit var prevDateButton: ImageButton
     private lateinit var nextDateButton: ImageButton
     private lateinit var categorySpinner: Spinner
+    private lateinit var savedNewsButton: ImageButton
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
     private var currentDate = Calendar.getInstance()
     private var currentCategory = "All"
     private var allNewsForDate = listOf<DocumentSnapshot>()
+    private val savedNewsIds = mutableSetOf<String>()
+    private var isShowingSavedNews = false
+    private var allNews = listOf<DocumentSnapshot>()
 
     private val categories = listOf(
         "All",
@@ -63,9 +69,24 @@ class MainActivity : AppCompatActivity() {
         prevDateButton = findViewById(R.id.prevDateButton)
         nextDateButton = findViewById(R.id.nextDateButton)
         categorySpinner = findViewById(R.id.categorySpinner)
+        savedNewsButton = findViewById(R.id.savedNewsButton)
 
         dateDisplay.paintFlags = dateDisplay.paintFlags or Paint.UNDERLINE_TEXT_FLAG
 
+        // Load saved news IDs from SharedPreferences
+        loadSavedNewsIds()
+
+        // Set up saved news button
+        savedNewsButton.setOnClickListener {
+            isShowingSavedNews = !isShowingSavedNews
+            if (isShowingSavedNews) {
+                displaySavedNews()
+                savedNewsButton.setImageResource(R.drawable.saved_bookmarks_active)
+            } else {
+                filterAndDisplayNews()
+                savedNewsButton.setImageResource(R.drawable.saved_bookmarks)
+            }
+        }
 
         // Set up category spinner
         val adapter = ArrayAdapter(this, R.layout.spinner_item, categories, )
@@ -88,9 +109,6 @@ class MainActivity : AppCompatActivity() {
 
         // Initially hide the calendar
         calendarView.visibility = View.GONE
-
-
-
 
         // Set up calendar toggle button
         dateDisplay.setOnClickListener {
@@ -124,9 +142,6 @@ class MainActivity : AppCompatActivity() {
                 set(Calendar.SECOND, 0)
                 set(Calendar.MILLISECOND, 0)
             }
-
-
-
 
             val nextDay = (currentDate.clone() as Calendar).apply {
                 add(Calendar.DAY_OF_MONTH, 1)
@@ -186,7 +201,9 @@ class MainActivity : AppCompatActivity() {
             .addOnCompleteListener { authTask ->
                 if (authTask.isSuccessful) {
                     db = FirebaseFirestore.getInstance()
-                    // Fetch news for today's date by default
+                    // Fetch all news first
+                    fetchAllNews()
+                    // Then fetch news for today's date by default
                     updateDateDisplay()
                     fetchNews(dateFormat.format(currentDate.time))
                 } else {
@@ -210,6 +227,17 @@ class MainActivity : AppCompatActivity() {
             .addOnFailureListener { e ->
                 val errorCard = createErrorCard("Error fetching: ${e.message}")
                 newsLayout.addView(errorCard)
+            }
+    }
+
+    private fun fetchAllNews() {
+        db.collection("headlines")
+            .get()
+            .addOnSuccessListener { result ->
+                allNews = result.documents
+            }
+            .addOnFailureListener { e ->
+                Log.e("NewsFetch", "Error fetching all news: ${e.message}")
             }
     }
 
@@ -253,7 +281,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun filterAndDisplayNews() {
-        newsLayout.removeAllViews() // Clear previous results
+        newsLayout.removeAllViews()
+        if (isShowingSavedNews) {
+            displaySavedNews()
+            return
+        }
 
         val filteredNews = if (currentCategory == "All") {
             allNewsForDate
@@ -263,13 +295,11 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        if (filteredNews.isNotEmpty()) {
-            for (doc in filteredNews) {
-                renderDocument(doc)
-            }
+        if (filteredNews.isEmpty()) {
+            val noNewsCard = createErrorCard("No news found for selected date and category")
+            newsLayout.addView(noNewsCard)
         } else {
-            val errorCard = createErrorCard("No articles found for $currentCategory")
-            newsLayout.addView(errorCard)
+            filteredNews.forEach { doc -> renderDocument(doc) }
         }
     }
 
@@ -292,6 +322,9 @@ class MainActivity : AppCompatActivity() {
         val title = document.getString("title") ?: "N/A"
         val link = document.getString("link") ?: "N/A"
         val description = document.getString("description") ?: "N/A"
+
+        val timestamp = document.getTimestamp("date")?.toDate()
+        val date = timestamp?.let { dateFormat.format(it) }
         val category = document.getString("category") ?: "N/A"
 
         // Inflate the custom card layout
@@ -302,11 +335,28 @@ class MainActivity : AppCompatActivity() {
         val titleView = cardView.findViewById<TextView>(R.id.newsTitle)
         val categoryView = cardView.findViewById<TextView>(R.id.newsCategory)
         val descriptionView = cardView.findViewById<TextView>(R.id.newsDescription)
+        val dateView =  cardView.findViewById<TextView>(R.id.newsDate)
+        val saveButton = cardView.findViewById<ImageButton>(R.id.saveButton)
 
         // Set the text
         titleView.text = title
         descriptionView.text = description
         categoryView.text = category
+        dateView.text = date
+
+        // Set up save button
+
+
+        saveButton.setImageResource(if (savedNewsIds.contains(document.id)) (R.drawable.bookmark_active) else (R.drawable.bookmark))
+        saveButton.setOnClickListener {
+            if (savedNewsIds.contains(document.id)) {
+                removeNewsId(document.id)
+                saveButton.setImageResource(R.drawable.bookmark)
+            } else {
+                saveNewsId(document.id)
+                saveButton.setImageResource(R.drawable.bookmark_active)
+            }
+        }
 
         // Set up click listener to open the URL in a browser
         cardView.setOnClickListener {
@@ -343,5 +393,38 @@ class MainActivity : AppCompatActivity() {
         cardView.addView(textLayout)
 
         return cardView
+    }
+
+    private fun loadSavedNewsIds() {
+        val sharedPrefs = getSharedPreferences("NewsPrefs", MODE_PRIVATE)
+        savedNewsIds.clear()
+        savedNewsIds.addAll(sharedPrefs.getStringSet("savedNewsIds", setOf()) ?: setOf())
+    }
+
+    private fun saveNewsId(newsId: String) {
+        savedNewsIds.add(newsId)
+        val sharedPrefs = getSharedPreferences("NewsPrefs", MODE_PRIVATE)
+        sharedPrefs.edit().putStringSet("savedNewsIds", savedNewsIds).apply()
+    }
+
+    private fun removeNewsId(newsId: String) {
+        savedNewsIds.remove(newsId)
+        val sharedPrefs = getSharedPreferences("NewsPrefs", MODE_PRIVATE)
+        sharedPrefs.edit().putStringSet("savedNewsIds", savedNewsIds).apply()
+    }
+
+    private fun displaySavedNews() {
+        newsLayout.removeAllViews()
+        val savedNews = allNews.filter { doc -> savedNewsIds.contains(doc.id) }
+        if (savedNews.isEmpty()) {
+            val noSavedNewsCard = createErrorCard("No saved news found")
+            newsLayout.addView(noSavedNewsCard)
+        } else {
+            // Sort saved news by date in descending order (newest first)
+            val sortedSavedNews = savedNews.sortedByDescending { doc ->
+                doc.getTimestamp("date")?.toDate()?.time ?: 0L
+            }
+            sortedSavedNews.forEach { doc -> renderDocument(doc) }
+        }
     }
 }

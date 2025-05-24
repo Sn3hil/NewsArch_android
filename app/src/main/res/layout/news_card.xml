@@ -12,7 +12,7 @@
         android:layout_height="wrap_content"
         android:soundEffectsEnabled="true"
         android:background="@drawable/rounded_calendar_background"
-        android:padding="16dp">
+        android:paddingBottom="16dp">
 
         <TextView
             android:id="@+id/newsTitle"
@@ -21,8 +21,24 @@
             android:textColor="@color/white"
             android:textSize="16sp"
             android:textStyle="bold"
-            app:layout_constraintEnd_toEndOf="parent"
+            android:layout_marginTop="16dp"
+            android:layout_marginStart="16dp"
+            app:layout_constraintEnd_toStartOf="@id/saveButton"
             app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <ImageButton
+            android:id="@+id/saveButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@drawable/bookmark"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:layout_marginTop="1dp"
+            android:paddingEnd="16dp"
+            android:paddingStart="20dp"
+            android:paddingBottom="20dp"
+            app:layout_constraintStart_toEndOf="@id/newsTitle"
+            app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
         <TextView
@@ -31,9 +47,11 @@
             android:layout_height="wrap_content"
             android:textColor="@color/white"
             android:textSize="12sp"
+            android:layout_marginStart="16dp"
             app:layout_constraintEnd_toEndOf="parent"
             android:layout_marginTop="9dp"
             app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/saveButton"
             app:layout_constraintTop_toBottomOf="@id/newsTitle" />
 
         <TextView
@@ -41,10 +59,26 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
             android:textColor="@color/green"
             android:textSize="14sp"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/newsDescription" />
+
+        <TextView
+            android:id="@+id/newsDate"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            android:textColor="@color/green"
+            android:textSize="14sp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/newsDescription" />
+
+
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
