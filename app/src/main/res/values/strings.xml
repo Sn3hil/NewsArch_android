@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">News Fetch</string>
+    <string name="underlined_text"><u>Today</u></string>
 </resources>

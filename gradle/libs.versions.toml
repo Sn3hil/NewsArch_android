@@ -37,6 +37,7 @@ firebase-database = { group = "com.google.firebase", name = "firebase-database",
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
 androidx-cardview = { group = "androidx.cardview", name = "cardview", version.ref = "cardview" }
+material = { module = " com.google.android.material:material" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

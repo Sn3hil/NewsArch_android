@@ -6,14 +6,6 @@
         <entry key="Firebase Crashlytics">
           <value>
             <InsightsFilterSettings>
-              <option name="connection">
-                <ConnectionSetting>
-                  <option name="appId" value="com.example.newsfetch" />
-                  <option name="mobileSdkAppId" value="1:616278470049:android:c5a98c71034cc8bcdd2fe0" />
-                  <option name="projectId" value="newsapp-cc9d8" />
-                  <option name="projectNumber" value="616278470049" />
-                </ConnectionSetting>
-              </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />
               <option name="timeIntervalDays" value="THIRTY_DAYS" />
               <option name="visibilityType" value="ALL" />
