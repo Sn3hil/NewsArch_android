@@ -1,16 +1,16 @@
 package com.example.newsfetch
 
+import android.annotation.SuppressLint
 import android.graphics.Color
 import android.graphics.Paint
 import android.os.Build
 import android.os.Bundle
-import android.text.SpannableString
-import android.text.style.UnderlineSpan
 import android.util.Log
+import android.view.GestureDetector
+import android.view.MotionEvent
 import android.view.View
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
-import android.widget.Button
 import android.widget.CalendarView
 import android.widget.ImageButton
 import android.widget.LinearLayout
@@ -20,7 +20,7 @@ import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.cardview.widget.CardView
-import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.core.view.GestureDetectorCompat
 import androidx.core.view.isVisible
 import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
@@ -28,6 +28,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.DocumentSnapshot
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlin.math.abs
 
 class MainActivity : AppCompatActivity() {
 
@@ -35,7 +36,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var newsLayout: LinearLayout
     private lateinit var calendarView: CalendarView
     private lateinit var dateDisplay: TextView
-    private lateinit var calendarToggleButton: ImageButton
     private lateinit var prevDateButton: ImageButton
     private lateinit var nextDateButton: ImageButton
     private lateinit var categorySpinner: Spinner
@@ -47,6 +47,7 @@ class MainActivity : AppCompatActivity() {
     private val savedNewsIds = mutableSetOf<String>()
     private var isShowingSavedNews = false
     private var allNews = listOf<DocumentSnapshot>()
+    private lateinit var gestureDetector: GestureDetectorCompat
 
     private val categories = listOf(
         "All",
@@ -56,11 +57,13 @@ class MainActivity : AppCompatActivity() {
         "Science"
     )
 
+    @SuppressLint("ClickableViewAccessibility")
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         FirebaseApp.initializeApp(this)
         setContentView(R.layout.activity_main)
+
 
         // Initialize views
         newsLayout = findViewById(R.id.newsLayout)
@@ -89,7 +92,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         // Set up category spinner
-        val adapter = ArrayAdapter(this, R.layout.spinner_item, categories, )
+        val adapter = ArrayAdapter(this, R.layout.spinner_item, categories )
         adapter.setDropDownViewResource(R.layout.spinner_item2)
         categorySpinner.adapter = adapter
         categorySpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
@@ -123,65 +126,11 @@ class MainActivity : AppCompatActivity() {
 
         // Set up date navigation buttons
         prevDateButton.setOnClickListener {
-            val prevDay = (currentDate.clone() as Calendar).apply {
-                add(Calendar.DAY_OF_MONTH, -1)
-            }
-
-            // Update currentDate with the new value
-            currentDate = prevDay
-            updateDateDisplay()
-            fetchNews(dateFormat.format(currentDate.time))
-            // Update navigation buttons state after changing date
-            updateNavigationButtonsState()
+            fetchPrevNews()
         }
 
         nextDateButton.setOnClickListener {
-            val today = Calendar.getInstance().apply {
-                set(Calendar.HOUR_OF_DAY, 0)
-                set(Calendar.MINUTE, 0)
-                set(Calendar.SECOND, 0)
-                set(Calendar.MILLISECOND, 0)
-            }
-
-            val nextDay = (currentDate.clone() as Calendar).apply {
-                add(Calendar.DAY_OF_MONTH, 1)
-            }
-
-            // Create normalized comparison calendars for accurate date comparison
-            val normalizedNextDay = Calendar.getInstance().apply {
-                clear()
-                set(Calendar.YEAR, nextDay.get(Calendar.YEAR))
-                set(Calendar.MONTH, nextDay.get(Calendar.MONTH))
-                set(Calendar.DAY_OF_MONTH, nextDay.get(Calendar.DAY_OF_MONTH))
-            }
-
-            val normalizedToday = Calendar.getInstance().apply {
-                clear()
-                set(Calendar.YEAR, today.get(Calendar.YEAR))
-                set(Calendar.MONTH, today.get(Calendar.MONTH))
-                set(Calendar.DAY_OF_MONTH, today.get(Calendar.DAY_OF_MONTH))
-            }
-
-            // Log the date comparison for debugging
-            Log.d("DateNavigation", "Next day: ${dateFormat.format(nextDay.time)}")
-            Log.d("DateNavigation", "Today: ${dateFormat.format(today.time)}")
-            Log.d("DateNavigation", "Comparison: ${normalizedNextDay.timeInMillis <= normalizedToday.timeInMillis}")
-
-            if (normalizedNextDay.timeInMillis <= normalizedToday.timeInMillis) {
-                // Update currentDate with the new value
-                currentDate = nextDay
-                updateDateDisplay()
-                fetchNews(dateFormat.format(currentDate.time))
-                // Update navigation buttons state after changing date
-                updateNavigationButtonsState()
-            } else {
-                // Show a toast message to inform the user they can't navigate beyond today
-                Toast.makeText(
-                    this,
-                    "Cannot navigate to future dates",
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
+           fetchNextNews()
         }
 
         // Set up calendar listener
@@ -211,6 +160,68 @@ class MainActivity : AppCompatActivity() {
                     newsLayout.addView(errorCard)
                 }
             }
+    }
+
+    private fun fetchNextNews() {
+        val today = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+
+        val nextDay = (currentDate.clone() as Calendar).apply {
+            add(Calendar.DAY_OF_MONTH, 1)
+        }
+
+        // Create normalized comparison calendars for accurate date comparison
+        val normalizedNextDay = Calendar.getInstance().apply {
+            clear()
+            set(Calendar.YEAR, nextDay.get(Calendar.YEAR))
+            set(Calendar.MONTH, nextDay.get(Calendar.MONTH))
+            set(Calendar.DAY_OF_MONTH, nextDay.get(Calendar.DAY_OF_MONTH))
+        }
+
+        val normalizedToday = Calendar.getInstance().apply {
+            clear()
+            set(Calendar.YEAR, today.get(Calendar.YEAR))
+            set(Calendar.MONTH, today.get(Calendar.MONTH))
+            set(Calendar.DAY_OF_MONTH, today.get(Calendar.DAY_OF_MONTH))
+        }
+
+        // Log the date comparison for debugging
+        Log.d("DateNavigation", "Next day: ${dateFormat.format(nextDay.time)}")
+        Log.d("DateNavigation", "Today: ${dateFormat.format(today.time)}")
+        Log.d("DateNavigation", "Comparison: ${normalizedNextDay.timeInMillis <= normalizedToday.timeInMillis}")
+
+        if (normalizedNextDay.timeInMillis <= normalizedToday.timeInMillis) {
+            // Update currentDate with the new value
+            currentDate = nextDay
+            updateDateDisplay()
+            fetchNews(dateFormat.format(currentDate.time))
+            // Update navigation buttons state after changing date
+            updateNavigationButtonsState()
+        } else {
+            // Show a toast message to inform the user they can't navigate beyond today
+            Toast.makeText(
+                this,
+                "Cannot navigate to future dates",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+
+    private fun fetchPrevNews() {
+        val prevDay = (currentDate.clone() as Calendar).apply {
+            add(Calendar.DAY_OF_MONTH, -1)
+        }
+
+        // Update currentDate with the new value
+        currentDate = prevDay
+        updateDateDisplay()
+        fetchNews(dateFormat.format(currentDate.time))
+        // Update navigation buttons state after changing date
+        updateNavigationButtonsState()
     }
 
     private fun fetchNews(targetDay: String) {
@@ -345,8 +356,6 @@ class MainActivity : AppCompatActivity() {
         dateView.text = date
 
         // Set up save button
-
-
         saveButton.setImageResource(if (savedNewsIds.contains(document.id)) (R.drawable.bookmark_active) else (R.drawable.bookmark))
         saveButton.setOnClickListener {
             if (savedNewsIds.contains(document.id)) {

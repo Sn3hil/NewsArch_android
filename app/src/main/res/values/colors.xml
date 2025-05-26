@@ -7,8 +7,12 @@
     <color name="purple_700">#FF3700B3</color>
     <color name="green">#39FF14</color>
     <color name="green2">#357a38</color>
+    <color name="green3">#52b788</color>
     <color name = "orange">#FFB300</color>
     <color name="teal_700">#39FF14</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 </resources>
+
+
+
